@@ -160,33 +160,33 @@
        * @returns {Point|null} - The intersection point, or null if no intersection
        */
       function findSegmentIntersection(line1, line2) {
-        const p1 = line1.startPoint;
-        const p2 = line1.endPoint;
-        const q1 = line2.startPoint;
-        const q2 = line2.endPoint;
+        const p0 = line1.startPoint;
+        const p1 = line1.endPoint;
+        const p2 = line2.startPoint;
+        const p3 = line2.endPoint;
 
         // Direction vectors
-        const r = { x: p2.x - p1.x, y: p2.y - p1.y };
-        const s = { x: q2.x - q1.x, y: q2.y - q1.y };
+        const v1 = { x: p1.x - p0.x, y: p1.y - p0.y };
+        const v2 = { x: p3.x - p2.x, y: p3.y - p2.y };
 
-        // Cross product of r and s
-        const rxs = r.x * s.y - r.y * s.x;
+        // Cross product of v1 and v2
+        const v1xv2 = v1.x * v2.y - v1.y * v2.x;
 
-        // Check if lines are parallel (rxs == 0)
-        if (Math.abs(rxs) < 1e-10) {
+        // Check if lines are parallel (v1xv2 == 0)
+        if (Math.abs(v1xv2) < 1e-10) {
           return null; // Lines are parallel or coincident
         }
 
         // Calculate t and u
-        const qp = { x: q1.x - p1.x, y: q1.y - p1.y };
-        const t = (qp.x * s.y - qp.y * s.x) / rxs;
-        const u = (qp.x * r.y - qp.y * r.x) / rxs;
+        const qp = { x: p2.x - p0.x, y: p2.y - p0.y };
+        const t1 = (qp.x * v2.y - qp.y * v2.x) / v1xv2;
+        const t2 = (qp.x * v1.y - qp.y * v1.x) / v1xv2;
 
         // Check if t and u are within [0, 1] (intersection within the segments)
-        if (t >= 0 && t <= 1 && u >= 0 && u <= 1) {
+        if (t1 >= 0 && t1 <= 1 && t2 >= 0 && t2 <= 1) {
           // Calculate the intersection point
-          const intersectionX = p1.x + t * r.x;
-          const intersectionY = p1.y + t * r.y;
+          const intersectionX = p0.x + t1 * v1.x;
+          const intersectionY = p0.y + t1 * v1.y;
           return new Point(intersectionX, intersectionY);
         }
 
@@ -196,7 +196,7 @@
       function main() {
         const line1 = new Line(
           new Point(-90, -90),
-          new Point(10, -20),
+          new Point(10, 20),
           "#ff0000" // Red
         );
 
