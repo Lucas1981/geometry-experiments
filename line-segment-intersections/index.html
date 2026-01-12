@@ -153,10 +153,50 @@
         return new Point(x, y);
       }
 
+      /**
+       * Check if two line segments intersect using parametric equations
+       * @param {Line} line1 - The first line segment
+       * @param {Line} line2 - The second line segment
+       * @returns {Point|null} - The intersection point, or null if no intersection
+       */
+      function findSegmentIntersection(line1, line2) {
+        const p1 = line1.startPoint;
+        const p2 = line1.endPoint;
+        const q1 = line2.startPoint;
+        const q2 = line2.endPoint;
+
+        // Direction vectors
+        const r = { x: p2.x - p1.x, y: p2.y - p1.y };
+        const s = { x: q2.x - q1.x, y: q2.y - q1.y };
+
+        // Cross product of r and s
+        const rxs = r.x * s.y - r.y * s.x;
+
+        // Check if lines are parallel (rxs == 0)
+        if (Math.abs(rxs) < 1e-10) {
+          return null; // Lines are parallel or coincident
+        }
+
+        // Calculate t and u
+        const qp = { x: q1.x - p1.x, y: q1.y - p1.y };
+        const t = (qp.x * s.y - qp.y * s.x) / rxs;
+        const u = (qp.x * r.y - qp.y * r.x) / rxs;
+
+        // Check if t and u are within [0, 1] (intersection within the segments)
+        if (t >= 0 && t <= 1 && u >= 0 && u <= 1) {
+          // Calculate the intersection point
+          const intersectionX = p1.x + t * r.x;
+          const intersectionY = p1.y + t * r.y;
+          return new Point(intersectionX, intersectionY);
+        }
+
+        return null; // No intersection
+      }
+
       function main() {
         const line1 = new Line(
-          new Point(-10, -20),
-          new Point(40, 50),
+          new Point(-90, -90),
+          new Point(10, -20),
           "#ff0000" // Red
         );
 
@@ -174,15 +214,8 @@
         line1.draw();
         line2.draw();
 
-        // Calculate the intersection point using general form
-        const generalForm1 = getGeneralForm(line1);
-        const generalForm2 = getGeneralForm(line2);
-
-        console.log("Line 1 general form:", generalForm1);
-        console.log("Line 2 general form:", generalForm2);
-
-        // NOTE: Does not take into account the length of the line, and extends to infinity
-        const intersectionPoint = findIntersection(generalForm1, generalForm2);
+        // Check for intersection
+        const intersectionPoint = findSegmentIntersection(line1, line2);
 
         if (intersectionPoint) {
           console.log("Intersection point:", intersectionPoint);
@@ -194,7 +227,7 @@
           ctx.fillStyle = "#ffffff";
           ctx.fill();
         } else {
-          console.log("Lines are parallel - no intersection");
+          console.log("Line segments do not intersect");
         }
       }
 
