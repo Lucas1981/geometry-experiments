@@ -1,246 +1,255 @@
 <!DOCTYPE html>
 <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Draw Line - Pixel Manipulation</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 20px;
+        background-color: #222;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        font-family: Arial, sans-serif;
+      }
 
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Draw Line - Pixel Manipulation</title>
-  <style>
-    body {
-      margin: 0;
-      padding: 20px;
-      background-color: #222;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      font-family: Arial, sans-serif;
-    }
+      .canvas-container {
+        text-align: center;
+      }
 
-    .canvas-container {
-      text-align: center;
-    }
+      canvas {
+        border: 2px solid #666;
+        /* Scale the canvas 3x while maintaining crisp pixels */
+        width: 960px;
+        height: 600px;
+        /* Disable anti-aliasing for crisp pixel rendering */
+        image-rendering: -moz-crisp-edges;
+        image-rendering: -webkit-crisp-edges;
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+      }
 
-    canvas {
-      border: 2px solid #666;
-      /* Scale the canvas 3x while maintaining crisp pixels */
-      width: 960px;
-      height: 600px;
-      /* Disable anti-aliasing for crisp pixel rendering */
-      image-rendering: -moz-crisp-edges;
-      image-rendering: -webkit-crisp-edges;
-      image-rendering: pixelated;
-      image-rendering: crisp-edges;
-    }
+      .info {
+        color: #ccc;
+        margin-top: 20px;
+      }
+    </style>
+  </head>
 
-    .info {
-      color: #ccc;
-      margin-top: 20px;
-    }
-  </style>
-</head>
-
-<body>
-  <div class="canvas-container">
-    <canvas id="canvas" width="320" height="200"></canvas>
-    <div class="info">
-      <p>Canvas: 320x200 pixels (displayed at 960x600)</p>
-      <p>Click to draw pixels!</p>
+  <body>
+    <div class="canvas-container">
+      <canvas id="canvas" width="320" height="200"></canvas>
+      <div class="info">
+        <p>Canvas: 320x200 pixels (displayed at 960x600)</p>
+      </div>
     </div>
-  </div>
 
-  <script>
-    /*
-      * Line Projection Example
-      * 
-      * This example demonstrates how to project one line onto another in 2D space.
-      * It draws two lines originating from the center of the canvas and shows the
-      * projection of the first line onto the second line.
-      * 
-      * Example derived from LaMothe's Tricks of the 3D Game Programming Gurus, p 268.
-      * 
-      */
+    <script>
+      /*
+       * Line Projection Example
+       *
+       * This example demonstrates how to project one line onto another in 2D space.
+       * It draws two lines originating from the center of the canvas and shows the
+       * projection of the first line onto the second line.
+       *
+       * Example derived from LaMothe's Tricks of the 3D Game Programming Gurus, p 268.
+       *
+       */
 
-    // Get canvas and context
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
+      // Get canvas and context
+      const canvas = document.getElementById("canvas");
+      const ctx = canvas.getContext("2d");
 
-    // Disable anti-aliasing on the context
-    ctx.imageSmoothingEnabled = false;
+      // Disable anti-aliasing on the context
+      ctx.imageSmoothingEnabled = false;
 
-    // Canvas dimensions
-    const WIDTH = 320;
-    const HEIGHT = 200;
-    const CENTER_X = WIDTH / 2;
-    const CENTER_Y = HEIGHT / 2;
+      // Canvas dimensions
+      const WIDTH = 320;
+      const HEIGHT = 200;
+      const CENTER_X = WIDTH / 2;
+      const CENTER_Y = HEIGHT / 2;
 
-    /**
-     * Point class to represent a 2D point
-     */
-    class Point {
-      constructor(x, y) {
-        this.x = x;
-        this.y = y;
+      /**
+       * Point class to represent a 2D point
+       */
+      class Point {
+        constructor(x, y) {
+          this.x = x;
+          this.y = y;
+        }
+
+        /**
+         * Convert from our coordinate system (center origin) to canvas coordinates (top-left origin)
+         */
+        toCanvasCoords() {
+          return {
+            x: this.x + CENTER_X,
+            y: CENTER_Y - this.y, // Flip Y axis (positive Y goes up in our system, down in canvas)
+          };
+        }
       }
 
       /**
-       * Convert from our coordinate system (center origin) to canvas coordinates (top-left origin)
+       * Line class to represent a line made of two points
        */
-      toCanvasCoords() {
-        return {
-          x: this.x + CENTER_X,
-          y: CENTER_Y - this.y  // Flip Y axis (positive Y goes up in our system, down in canvas)
-        };
-      }
-    }
+      class Line {
+        constructor(startPoint, endPoint, color = "#ffffff") {
+          this.startPoint = startPoint;
+          this.endPoint = endPoint;
+          this.color = color;
+        }
 
-    /**
-     * Line class to represent a line made of two points
-     */
-    class Line {
-      constructor(startPoint, endPoint, color = '#ffffff') {
-        this.startPoint = startPoint;
-        this.endPoint = endPoint;
-        this.color = color;
+        /**
+         * Draw this line on the canvas
+         */
+        draw() {
+          const startCanvas = this.startPoint.toCanvasCoords();
+          const endCanvas = this.endPoint.toCanvasCoords();
+
+          ctx.strokeStyle = this.color;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(startCanvas.x, startCanvas.y);
+          ctx.lineTo(endCanvas.x, endCanvas.y);
+          ctx.stroke();
+        }
       }
 
       /**
-       * Draw this line on the canvas
+       * Draw horizontal and vertical axes through the center of the canvas
        */
-      draw() {
-        const startCanvas = this.startPoint.toCanvasCoords();
-        const endCanvas = this.endPoint.toCanvasCoords();
+      function drawAxes() {
+        const centerX = WIDTH / 2;
+        const centerY = HEIGHT / 2;
 
-        ctx.strokeStyle = this.color;
+        ctx.strokeStyle = "#808080"; // Gray color
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.moveTo(startCanvas.x, startCanvas.y);
-        ctx.lineTo(endCanvas.x, endCanvas.y);
+
+        // Draw horizontal axis
+        ctx.moveTo(0, centerY);
+        ctx.lineTo(WIDTH, centerY);
+
+        // Draw vertical axis
+        ctx.moveTo(centerX, 0);
+        ctx.lineTo(centerX, HEIGHT);
+
         ctx.stroke();
       }
-    }
 
-    /**
-     * Draw horizontal and vertical axes through the center of the canvas
-     */
-    function drawAxes() {
-      const centerX = WIDTH / 2;
-      const centerY = HEIGHT / 2;
+      function dotProduct(u, v) {
+        return u.x * v.x + u.y * v.y;
+      }
 
-      ctx.strokeStyle = '#808080'; // Gray color
-      ctx.lineWidth = 1;
-      ctx.beginPath();
+      function getUnitVector(v) {
+        const length = Math.sqrt(v.x * v.x + v.y * v.y);
+        return { x: v.x / length, y: v.y / length };
+      }
 
-      // Draw horizontal axis
-      ctx.moveTo(0, centerY);
-      ctx.lineTo(WIDTH, centerY);
+      function getProjectionVector(u, v) {
+        const dp = dotProduct(u, v);
+        const lengthV = Math.sqrt(v.x * v.x + v.y * v.y);
+        const scalar = dp / lengthV;
+        const unitVectorV = getUnitVector(v);
+        return {
+          x: unitVectorV.x * scalar,
+          y: unitVectorV.y * scalar,
+        };
+      }
 
-      // Draw vertical axis
-      ctx.moveTo(centerX, 0);
-      ctx.lineTo(centerX, HEIGHT);
+      function main() {
+        // Clear canvas with black background
+        ctx.fillStyle = "#000000";
+        ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
-      ctx.stroke();
-    }
+        // Draw the coordinate axes
+        drawAxes();
 
-    function dotProduct(u, v) {
-      return u.x * v.x + u.y * v.y;
-    }
+        // Create the two lines
+        const line1 = new Line(
+          new Point(0, 0),
+          new Point(90, 80),
+          "#ff0000" // Red
+        );
 
-    function getUnitVector(v) {
-      const length = Math.sqrt(v.x * v.x + v.y * v.y);
-      return { x: v.x / length, y: v.y / length };
-    }
+        const line2 = new Line(
+          new Point(0, 0),
+          new Point(50, 0),
+          "#00ff00" // Green
+        );
 
-    function getProjectionVector(u, v) {
-      const dp = dotProduct(u, v);
-      const lengthV = Math.sqrt(v.x * v.x + v.y * v.y);
-      const scalar = dp / lengthV;
-      const unitVectorV = getUnitVector(v);
-      return {
-        x: unitVectorV.x * scalar,
-        y: unitVectorV.y * scalar
-      };
-    }
+        const finishLine = new Line(
+          new Point(90, 0),
+          new Point(90, HEIGHT),
+          "#ffff00" // Yellow
+        );
 
-    function main() {
-      // Clear canvas with black background
-      ctx.fillStyle = '#000000';
-      ctx.fillRect(0, 0, WIDTH, HEIGHT);
+        const projectionVector = getProjectionVector(
+          {
+            x: line1.endPoint.x - line1.startPoint.x,
+            y: line1.endPoint.y - line1.startPoint.y,
+          },
+          {
+            x: line2.endPoint.x - line2.startPoint.x,
+            y: line2.endPoint.y - line2.startPoint.y,
+          }
+        );
 
-      // Draw the coordinate axes
-      drawAxes();
+        const projectionLine = new Line(
+          new Point(0, 0),
+          new Point(projectionVector.x, projectionVector.y),
+          "#0000ff" // Blue
+        );
 
-      // Create the two lines
-      const line1 = new Line(
-        new Point(0, 0),
-        new Point(90, 80),
-        '#ff0000'  // Red
-      );
+        // Draw the lines
+        line1.draw();
+        projectionLine.draw();
+        line2.draw();
+        // finishLine.draw();
 
-      const line2 = new Line(
-        new Point(0, 0),
-        new Point(50, 0),
-        '#00ff00'  // Green
-      );
+        // Derive the angle between the lines using dot product and plot a point on the red line.
 
-      const finishLine = new Line(
-        new Point(90, 0),
-        new Point(90, HEIGHT),
-        '#ffff00'  // Yellow
-      );
+        const lv = Math.sqrt(
+          (line1.endPoint.x - line1.startPoint.x) ** 2 +
+            (line1.endPoint.y - line1.startPoint.y) ** 2
+        );
+        const lu = Math.sqrt(
+          (line2.endPoint.x - line2.startPoint.x) ** 2 +
+            (line2.endPoint.y - line2.startPoint.y) ** 2
+        );
+        const linesLengthMultiplied = lv * lu;
+        const dp = dotProduct(
+          {
+            x: line1.endPoint.x - line1.startPoint.x,
+            y: line1.endPoint.y - line1.startPoint.y,
+          },
+          {
+            x: line2.endPoint.x - line2.startPoint.x,
+            y: line2.endPoint.y - line2.startPoint.y,
+          }
+        );
 
-      const projectionVector = getProjectionVector(
-        { x: line1.endPoint.x - line1.startPoint.x, y: line1.endPoint.y - line1.startPoint.y },
-        { x: line2.endPoint.x - line2.startPoint.x, y: line2.endPoint.y - line2.startPoint.y },
-      );
+        const angle = Math.acos(dp / linesLengthMultiplied);
+        const angleDegrees = angle * (180 / Math.PI);
 
-      const projectionLine = new Line(
-        new Point(0, 0),
-        new Point(projectionVector.x, projectionVector.y),
-        '#0000ff'  // Blue
-      );
+        // Log the angle for debugging
+        console.log(`Angle in radians: ${angle}`);
+        console.log(`Angle in degrees: ${angleDegrees}`);
+        console.log(`Expected 45 degrees, got: ${angleDegrees}`);
 
-      // Draw the lines
-      line1.draw();
-      projectionLine.draw();
-      line2.draw();
-      // finishLine.draw();
+        const pointOnLine1X = 50 * Math.tan(angle);
 
-      // Derive the angle between the lines using dot product and plot a point on the red line.
+        // Draw a circle at the calculated point
+        ctx.beginPath();
+        ctx.arc(CENTER_X + 50, CENTER_Y - pointOnLine1X, 3, 0, 2 * Math.PI);
+        ctx.fillStyle = "#ffffff";
+        ctx.fill();
+      }
 
-      const lv = Math.sqrt(
-        (line1.endPoint.x - line1.startPoint.x) ** 2 +
-        (line1.endPoint.y - line1.startPoint.y) ** 2
-      );
-      const lu = Math.sqrt(
-        (line2.endPoint.x - line2.startPoint.x) ** 2 +
-        (line2.endPoint.y - line2.startPoint.y) ** 2
-      );
-      const linesLengthMultiplied = lv * lu;
-      const dp = dotProduct(
-        { x: line1.endPoint.x - line1.startPoint.x, y: line1.endPoint.y - line1.startPoint.y },
-        { x: line2.endPoint.x - line2.startPoint.x, y: line2.endPoint.y - line2.startPoint.y }
-      );
-
-      const angle = Math.acos(dp / linesLengthMultiplied);
-      const angleDegrees = angle * (180 / Math.PI);
-
-      // Log the angle for debugging
-      console.log(`Angle in radians: ${angle}`);
-      console.log(`Angle in degrees: ${angleDegrees}`);
-      console.log(`Expected 45 degrees, got: ${angleDegrees}`);
-
-      const pointOnLine1X = 50 * Math.tan(angle);
-
-      // Draw a circle at the calculated point
-      ctx.beginPath();
-      ctx.arc(CENTER_X + 50, CENTER_Y - pointOnLine1X, 3, 0, 2 * Math.PI);
-      ctx.fillStyle = '#ffffff';
-      ctx.fill();
-    }
-
-    main();
-  </script>
-</body>
-
+      main();
+    </script>
+  </body>
 </html>
