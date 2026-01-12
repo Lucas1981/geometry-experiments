@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Draw Line - Pixel Manipulation</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background-color: #222;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      font-family: Arial, sans-serif;
+    }
+
+    .canvas-container {
+      text-align: center;
+    }
+
+    canvas {
+      border: 2px solid #666;
+      /* Scale the canvas 3x while maintaining crisp pixels */
+      width: 960px;
+      height: 600px;
+      /* Disable anti-aliasing for crisp pixel rendering */
+      image-rendering: -moz-crisp-edges;
+      image-rendering: -webkit-crisp-edges;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+
+    .info {
+      color: #ccc;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="canvas-container">
+    <canvas id="canvas" width="320" height="200"></canvas>
+    <div class="info">
+      <p>Canvas: 320x200 pixels (displayed at 960x600)</p>
+      <p>Click to draw pixels!</p>
+    </div>
+  </div>
+
+  <script>
+    // Get canvas and context
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    // Disable anti-aliasing on the context
+    ctx.imageSmoothingEnabled = false;
+
+    // Canvas dimensions
+    const WIDTH = 320;
+    const HEIGHT = 200;
+    const CENTER_X = WIDTH / 2;
+    const CENTER_Y = HEIGHT / 2;
+
+    /**
+     * Point class to represent a 2D point
+     */
+    class Point {
+      constructor(x, y) {
+        this.x = x;
+        this.y = y;
+      }
+
+      /**
+       * Convert from our coordinate system (center origin) to canvas coordinates (top-left origin)
+       */
+      toCanvasCoords() {
+        return {
+          x: this.x + CENTER_X,
+          y: CENTER_Y - this.y  // Flip Y axis (positive Y goes up in our system, down in canvas)
+        };
+      }
+    }
+
+    /**
+     * Line class to represent a line made of two points
+     */
+    class Line {
+      constructor(startPoint, endPoint, color = '#ffffff') {
+        this.startPoint = startPoint;
+        this.endPoint = endPoint;
+        this.color = color;
+      }
+
+      /**
+       * Draw this line on the canvas
+       */
+      draw() {
+        const startCanvas = this.startPoint.toCanvasCoords();
+        const endCanvas = this.endPoint.toCanvasCoords();
+
+        ctx.strokeStyle = this.color;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(startCanvas.x, startCanvas.y);
+        ctx.lineTo(endCanvas.x, endCanvas.y);
+        ctx.stroke();
+      }
+    }
+
+    /**
+     * Convert a line from two-point form to general form: Ax + By + C = 0
+     */
+    function getGeneralForm(line) {
+      const x1 = line.startPoint.x;
+      const y1 = line.startPoint.y;
+      const x2 = line.endPoint.x;
+      const y2 = line.endPoint.y;
+
+      // General form: Ax + By + C = 0
+      // A = y1 - y2
+      // B = x2 - x1  
+      // C = x1*y2 - x2*y1
+      const A = y1 - y2;
+      const B = x2 - x1;
+      const C = x1 * y2 - x2 * y1;
+
+      return { A, B, C };
+    }
+
+    /**
+     * Find intersection point of two lines in general form
+     * Line 1: A1*x + B1*y + C1 = 0
+     * Line 2: A2*x + B2*y + C2 = 0
+     */
+    function findIntersection(generalForm1, generalForm2) {
+      const { A: A1, B: B1, C: C1 } = generalForm1;
+      const { A: A2, B: B2, C: C2 } = generalForm2;
+
+      // Calculate determinant
+      const d = A1 * B2 - A2 * B1;
+
+      // Check if lines are parallel (determinant = 0)
+      if (Math.abs(d) < 1e-10) {
+        return null; // Lines are parallel or coincident
+      }
+
+      // Use Cramer's rule to find intersection
+      const dx = B1 * C2 - B2 * C1;
+      const dy = A2 * C1 - A1 * C2;
+      const x = dx / d;
+      const y = dy / d;
+
+      return new Point(x, y);
+    }
+
+    function main() {
+      const line1 = new Line(
+        new Point(-10, -20),
+        new Point(40, 50),
+        '#ff0000'  // Red
+      );
+
+      const line2 = new Line(
+        new Point(-10, 30),
+        new Point(40, -40),
+        '#00ff00'  // Green
+      );
+
+      // Clear canvas
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+      // Draw lines
+      line1.draw();
+      line2.draw();
+
+      // Calculate the intersection point using general form
+      const generalForm1 = getGeneralForm(line1);
+      const generalForm2 = getGeneralForm(line2);
+
+      console.log('Line 1 general form:', generalForm1);
+      console.log('Line 2 general form:', generalForm2);
+
+      // NOTE: Does not take into account the length of the line, and extends to infinity
+      const intersectionPoint = findIntersection(generalForm1, generalForm2);
+
+      if (intersectionPoint) {
+        console.log('Intersection point:', intersectionPoint);
+
+        // Draw intersection point as a white circle
+        const canvasCoords = intersectionPoint.toCanvasCoords();
+        ctx.beginPath();
+        ctx.arc(canvasCoords.x, canvasCoords.y, 4, 0, 2 * Math.PI);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+      } else {
+        console.log('Lines are parallel - no intersection');
+      }
+
+    }
+
+    main();
+  </script>
+</body>
+
+</html>

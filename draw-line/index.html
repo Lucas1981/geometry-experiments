@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Draw Line - Pixel Manipulation</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background-color: #222;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      font-family: Arial, sans-serif;
+    }
+
+    .canvas-container {
+      text-align: center;
+    }
+
+    canvas {
+      border: 2px solid #666;
+      /* Scale the canvas 3x while maintaining crisp pixels */
+      width: 960px;
+      height: 600px;
+      /* Disable anti-aliasing for crisp pixel rendering */
+      image-rendering: -moz-crisp-edges;
+      image-rendering: -webkit-crisp-edges;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+
+    .info {
+      color: #ccc;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="canvas-container">
+    <canvas id="canvas" width="320" height="200"></canvas>
+    <div class="info">
+      <p>Canvas: 320x200 pixels (displayed at 960x600)</p>
+      <p>Click to draw pixels!</p>
+    </div>
+  </div>
+
+  <script>
+    // Get canvas and context
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    // Disable anti-aliasing on the context
+    ctx.imageSmoothingEnabled = false;
+
+    // Canvas dimensions
+    const WIDTH = 320;
+    const HEIGHT = 200;
+
+    // Create an ImageData buffer for direct pixel manipulation
+    const imageData = ctx.createImageData(WIDTH, HEIGHT);
+    const buffer = imageData.data;
+
+    // Fill the canvas with black initially
+    for (let i = 0; i < buffer.length; i += 4) {
+      buffer[i] = 0;     // Red
+      buffer[i + 1] = 0; // Green
+      buffer[i + 2] = 0; // Blue
+      buffer[i + 3] = 255; // Alpha (fully opaque)
+    }
+
+    /**
+     * Plot a single pixel at the specified coordinates with the given color
+     * @param {number} x - X coordinate (0 to WIDTH-1)
+     * @param {number} y - Y coordinate (0 to HEIGHT-1)
+     * @param {number} r - Red component (0-255)
+     * @param {number} g - Green component (0-255)
+     * @param {number} b - Blue component (0-255)
+     * @param {number} a - Alpha component (0-255, default: 255)
+     */
+    function plotPixel(x, y, r, g, b, a = 255) {
+      // Boundary check
+      if (x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT) {
+        return;
+      }
+
+      // Calculate the index in the data buffer
+      // Each pixel uses 4 bytes: RGBA
+      const index = (y * WIDTH + x) * 4;
+
+      // Set the pixel color in the buffer
+      buffer[index] = r;     // Red
+      buffer[index + 1] = g; // Green
+      buffer[index + 2] = b; // Blue
+      buffer[index + 3] = a; // Alpha
+    }
+
+    function drawLineSteppingX(p1, p2, r = 255, g = 0, b = 0) {
+      // Ensure we always step left-to-right
+      let startPoint = p1;
+      let endPoint = p2;
+
+      if (p1.x > p2.x) {
+        startPoint = p2;
+        endPoint = p1;
+      }
+
+      const dx = endPoint.x - startPoint.x;
+      const dy = endPoint.y - startPoint.y;
+      const stepY = dy / dx;
+
+      for (let x = 0; x <= dx; x++) {
+        const y = Math.floor(stepY * x);
+        plotPixel(startPoint.x + x, startPoint.y + y, r, g, b);
+      }
+    }
+
+    function drawLineSteppingY(p1, p2, r = 255, g = 0, b = 0) {
+      // Ensure we always step bottom-to-top
+      let startPoint = p1;
+      let endPoint = p2;
+
+      if (p1.y > p2.y) {
+        startPoint = p2;
+        endPoint = p1;
+      }
+
+      const dx = endPoint.x - startPoint.x;
+      const dy = endPoint.y - startPoint.y;
+      const stepX = dx / dy;
+
+      for (let y = 0; y <= dy; y++) {
+        const x = Math.floor(stepX * y);
+        plotPixel(startPoint.x + x, startPoint.y + y, r, g, b);
+      }
+    }
+
+    function drawLine(p1, p2, r = 255, g = 0, b = 0) {
+      // Handle zero-length lines (same point)
+      if (p1.x === p2.x && p1.y === p2.y) {
+        plotPixel(p1.x, p1.y, r, g, b);
+        return;
+      }
+
+      const dx = Math.abs(p2.x - p1.x);
+      const dy = Math.abs(p2.y - p1.y);
+
+      // Decide which axis to step along based on which delta is larger
+      if (dy > dx) {
+        // Steep line: step along Y axis to avoid gaps
+        drawLineSteppingY(p1, p2, r, g, b);
+      } else {
+        // Shallow line (includes horizontal and vertical): step along X axis
+        drawLineSteppingX(p1, p2, r, g, b);
+      }
+    }
+
+    function bresenhamLine(x0, y0, x1, y1) {
+      const dx = Math.abs(x1 - x0);
+      const dy = Math.abs(y1 - y0);
+      const sx = x0 < x1 ? 1 : -1;  // Step direction
+      const sy = y0 < y1 ? 1 : -1;
+      let err = dx - dy;            // Initial error
+
+      while (true) {
+        plotPixel(x0, y0, 255, 255, 0); // Yellow, to distinguish from other methods
+
+        if (x0 === x1 && y0 === y1) break;
+
+        const e2 = 2 * err;
+        if (e2 > -dy) { err -= dy; x0 += sx; }  // Move horizontally
+        if (e2 < dx) { err += dx; y0 += sy; }  // Move vertically
+      }
+    }
+
+    function main() {
+      // Test 1: Shallow diagonal line (uses drawLineSteppingX)
+      const p1 = { x: 20, y: 30 };
+      const p2 = { x: 280, y: 150 };
+      drawLine(p1, p2, 255, 0, 0); // Red
+      plotPixel(p1.x, p1.y, 0, 255, 0); // Start point in green
+      plotPixel(p2.x, p2.y, 0, 0, 255); // End point in blue
+
+      // Test 2: Steep line (uses drawLineSteppingY)
+      const p3 = { x: 100, y: 20 };
+      const p4 = { x: 130, y: 180 };
+      drawLine(p3, p4, 0, 255, 255); // Cyan
+      plotPixel(p3.x, p3.y, 0, 255, 0); // Yellow start
+      plotPixel(p4.x, p4.y, 0, 0, 255); // Blue end
+
+      // Test 3: Horizontal line (uses drawLineSteppingX)
+      const p5 = { x: 50, y: 100 };
+      const p6 = { x: 200, y: 100 };
+      drawLine(p5, p6, 255, 255, 0); // Yellow
+      plotPixel(p5.x, p5.y, 0, 255, 0); // Green start
+      plotPixel(p6.x, p6.y, 0, 0, 255); // Blue end
+
+      // Test 4: Vertical line (uses drawLineSteppingY, but handled by drawLineSteppingX due to dx=0)
+      const p7 = { x: 250, y: 50 };
+      const p8 = { x: 250, y: 150 };
+      drawLine(p7, p8, 255, 0, 255); // Magenta
+      plotPixel(p7.x, p7.y, 0, 255, 0); // Green start
+      plotPixel(p8.x, p8.y, 0, 0, 255); // Blue end
+
+      // Test 5: Zero-length line (single pixel)
+      drawLine({ x: 160, y: 108 }, { x: 160, y: 108 }, 255, 255, 255); // White dot
+
+      ctx.putImageData(imageData, 0, 0);
+    }
+
+    main();
+  </script>
+</body>
+
+</html>
