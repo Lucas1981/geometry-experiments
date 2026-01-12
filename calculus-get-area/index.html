@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Draw Line - Pixel Manipulation</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 20px;
+        background-color: #222;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        font-family: Arial, sans-serif;
+      }
+
+      .canvas-container {
+        text-align: center;
+      }
+
+      canvas {
+        border: 2px solid #666;
+        /* Scale the canvas 3x while maintaining crisp pixels */
+        width: 960px;
+        height: 600px;
+        /* Disable anti-aliasing for crisp pixel rendering */
+        image-rendering: -moz-crisp-edges;
+        image-rendering: -webkit-crisp-edges;
+        image-rendering: optimizeSpeed; /* Older browsers */
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+        will-change: transform;
+      }
+
+      .info {
+        color: #ccc;
+        margin-top: 20px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="canvas-container">
+      <canvas id="canvas" width="320" height="200"></canvas>
+      <div class="info">
+        <p>Canvas: 320x200 pixels (displayed at 960x600)</p>
+        <p>Click to draw pixels!</p>
+      </div>
+    </div>
+
+    <script>
+      /*
+       * Line Projection Example
+       *
+       * This example demonstrates how to project one line onto another in 2D space.
+       * It draws two lines originating from the center of the canvas and shows the
+       * projection of the first line onto the second line.
+       *
+       * Example derived from LaMothe's Tricks of the 3D Game Programming Gurus, p 268.
+       *
+       */
+
+      // Get canvas and context
+      const canvas = document.getElementById("canvas");
+      const ctx = canvas.getContext("2d");
+
+      // Disable anti-aliasing on the context
+      ctx.imageSmoothingEnabled = false;
+
+      // Canvas dimensions
+      const WIDTH = 320;
+      const HEIGHT = 200;
+      const CENTER_X = WIDTH / 2;
+      const CENTER_Y = HEIGHT / 2;
+
+      /**
+       * Point class to represent a 2D point
+       */
+      class Point {
+        constructor(x, y) {
+          this.x = x;
+          this.y = y;
+        }
+
+        /**
+         * Convert from our coordinate system (center origin) to canvas coordinates (top-left origin)
+         */
+        toCanvasCoords() {
+          return {
+            x: this.x + CENTER_X,
+            y: CENTER_Y - this.y, // Flip Y axis (positive Y goes up in our system, down in canvas)
+          };
+        }
+      }
+
+      /**
+       * Line class to represent a line made of two points
+       */
+      class Line {
+        constructor(startPoint, endPoint, color = "#ffffff") {
+          this.startPoint = startPoint;
+          this.endPoint = endPoint;
+          this.color = color;
+        }
+
+        /**
+         * Draw this line on the canvas
+         */
+        draw() {
+          const startCanvas = this.startPoint.toCanvasCoords();
+          const endCanvas = this.endPoint.toCanvasCoords();
+
+          ctx.strokeStyle = this.color;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(startCanvas.x, startCanvas.y);
+          ctx.lineTo(endCanvas.x, endCanvas.y);
+          ctx.stroke();
+        }
+      }
+
+      /**
+       * Draw horizontal and vertical axes through the center of the canvas
+       */
+      function drawAxes() {
+        const centerX = WIDTH / 2;
+        const centerY = HEIGHT / 2;
+
+        ctx.strokeStyle = "#808080"; // Gray color
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+
+        // Draw horizontal axis
+        ctx.moveTo(0, centerY);
+        ctx.lineTo(WIDTH, centerY);
+
+        // Draw vertical axis
+        ctx.moveTo(centerX, 0);
+        ctx.lineTo(centerX, HEIGHT);
+
+        ctx.stroke();
+      }
+
+      /**
+       * Plot a function on the canvas
+       * @param {Function} func - The function to plot
+       * @param {string} color - The color of the plot
+       */
+      function plotFunction(func, color = "#00ff00") {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+
+        for (let x = -CENTER_X; x < CENTER_X; x++) {
+          const y = func(x);
+          const canvasPoint = new Point(x, y).toCanvasCoords();
+
+          if (x === -CENTER_X) {
+            ctx.moveTo(canvasPoint.x, canvasPoint.y);
+          } else {
+            ctx.lineTo(canvasPoint.x, canvasPoint.y);
+          }
+        }
+
+        ctx.stroke();
+      }
+
+      /**
+       * Evaluate a polynomial term at a given x
+       * @param {Object} term - The polynomial term {a, n}
+       * @param {number} x - The x value
+       * @returns {number} - The evaluated value
+       */
+      function evaluateTerm(term, x) {
+        return term.a * Math.pow(x, term.n);
+      }
+
+      /**
+       * Integrate a polynomial term symbolically
+       * @param {Object} term - The polynomial term {a, n}
+       * @returns {Object} - The integrated term {a, n}
+       */
+      function integrateTerm(term) {
+        return {
+          a: term.a / (term.n + 1),
+          n: term.n + 1,
+        };
+      }
+
+      /**
+       * Evaluate the integral of a polynomial term between two bounds
+       * @param {Object} term - The polynomial term {a, n}
+       * @param {number} lower - The lower bound
+       * @param {number} upper - The upper bound
+       * @returns {number} - The definite integral value
+       */
+      function evaluateIntegral(term, lower, upper) {
+        const integratedTerm = integrateTerm(term);
+        const upperValue = evaluateTerm(integratedTerm, upper);
+        const lowerValue = evaluateTerm(integratedTerm, lower);
+        return upperValue - lowerValue;
+      }
+
+      function main() {
+        drawAxes();
+
+        // Define the polynomial f(x) = x^2 as {a: 1, n: 2}
+        const polynomial = { a: 1, n: 2 };
+
+        // Plot the function
+        plotFunction((x) => evaluateTerm(polynomial, x), "#00ff00");
+
+        // Define the bounds for the integral
+        const lowerBound = 0;
+        const upperBound = 5;
+
+        // Calculate the area under the curve
+        const area = evaluateIntegral(polynomial, lowerBound, upperBound);
+
+        // Visualize the area under the curve
+        ctx.fillStyle = "rgba(0, 0, 255, 0.2)";
+        for (let x = lowerBound; x <= upperBound; x += 0.1) {
+          const y = evaluateTerm(polynomial, x);
+          const canvasPoint = new Point(x, y).toCanvasCoords();
+          ctx.fillRect(
+            canvasPoint.x,
+            canvasPoint.y,
+            1,
+            CENTER_Y - canvasPoint.y
+          );
+        }
+
+        // Display the calculated area
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "12px Arial";
+        ctx.fillText(`Area: ${area.toFixed(2)}`, 10, 20);
+      }
+
+      main();
+    </script>
+  </body>
+</html>
